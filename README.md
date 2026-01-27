@@ -10,6 +10,7 @@ Currently in development. The goal is to have a clean and functional implementat
 * `CMakeLists.txt`: Configuration for compiling with CMake.
 
 ## 🛠️ Compilation If you have `gfortran` and `cmake`, you can compile it like this: 
-```bash mkdir build && cd build 
+```
+bash mkdir build && cd build 
 cmake .. 
 make
