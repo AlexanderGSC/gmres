@@ -1,6 +1,6 @@
 # GMRES Algorithm from Scratch
 
-Implementation from scratch of the GMRES algorithm, using MGS with reorthogonalization and Hoursholder reflections.
+Implementation from scratch of the GMRES algorithm, using MGS with reorthogonalization and Householder reflections.
 
 ## 🚀 Project status
 Currently in development. The goal is to have a clean and functional implementation from scratch.
