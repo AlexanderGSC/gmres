@@ -1,39 +1,34 @@
 cmake_minimum_required(VERSION 3.10)
 project(GMRES_Solver Fortran)
 
-# Buscar OpenMP
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -funroll-loops")
+
+# Search OpenMP
 find_package(OpenMP REQUIRED)
-
-# Buscar BLAS y LAPACK
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
-
-# Indicar dónde están los archivos de módulos y fuentes
-set(SOURCES
-    src/givens_mod.f90 
-    src/arnoldi_mod.f90
-    src/householder_mod.f90
-    src/gmres_mod.f90 
-    src/main.f90
-)
-
-# Configurar flags de optimización para GNU
+# Configure optimization flags for GNU
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
-    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -funroll-loops")
     message(STATUS "Flags de optimización activos: ${CMAKE_Fortran_FLAGS}")
 endif()
 
-# Si usas C++, haz lo mismo para CXX
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -ffast-math")
-endif()
+# BLAS and LAPACK not needed
+#find_package(BLAS REQUIRED)
+#find_package(LAPACK REQUIRED)
 
-# Crear el ejecutable
-add_executable(gmres_exe ${SOURCES})
+#Add GMRES Library
+add_library(gmres_lib src/gmres_mgsr.f90 src/gmres_hh.f90 src/matrix_utils.f90)
 
-# Forzar que los archivos .mod se guarden en la carpeta build
-set_target_properties(gmres_exe PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR})
-target_include_directories(gmres_exe PRIVATE ${CMAKE_BINARY_DIR})
+#Poisson
+add_executable(test_poisson tests/test_poisson.f90)
+target_link_libraries(test_poisson gmres_lib)
+set_target_properties(test_poisson PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR})
+target_include_directories(test_poisson PRIVATE ${CMAKE_BINARY_DIR})
 
-# Enlazar las librerías
-target_link_libraries(gmres_exe OpenMP::OpenMP_Fortran ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
+#Hilbert
+add_executable(test_hilbert tests/test_hilbert.f90)
+target_link_libraries(test_hilbert gmres_lib)
+set_target_properties(test_hilbert PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR})
+target_include_directories(test_hilbert PRIVATE ${CMAKE_BINARY_DIR})
+
+# Link Libraries
+target_link_libraries(test_hilbert OpenMP::OpenMP_Fortran)
+target_link_libraries(test_poisson OpenMP::OpenMP_Fortran)
