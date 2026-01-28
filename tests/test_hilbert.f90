@@ -46,7 +46,10 @@ CONTAINS
         write(*,'(A30, ES12.4)') 'Final residual:', errn(n_iter) 
         write(*,'(A30, ES12.4)') 'Max error L_max:', maxval(abs(x - 1.0d0))
         write(*,'(A30, ES12.4)') 'L2 norm:', norm2(x - 1.0d0)
-        write(*,'(A30, 100F8.4)') 'Solution: ', x(1:nsize)
+        write(*,'(A30, 10F10.4)') 'Solution (first 10):',x(1:10)
+        !do i=1,nsize-1,10
+        !    write(*,'(30(" "), 10F10.6)')  x(i:i+9)
+        !end do
         write(*,'(A30, F10.6, A)') 'Elapsed time:', end_time-start_time, ' secs.'
         deallocate(A)
         deallocate(b,x,errn,verr)
@@ -74,7 +77,10 @@ CONTAINS
         write(*,'(A30, ES12.4)') 'Final residual:', errn(n_iter) 
         write(*,'(A30, ES12.4)') 'Max error L_max:', maxval(abs(x - 1.0d0))
         write(*,'(A30, ES12.4)') 'L2 norm:', norm2(x - 1.0d0)
-        write(*,'(A30, 100F8.4)') 'First solution elements', x(1:nsize)
+        write(*,'(A30, 10F10.4)') 'Solution (first 10):', x(1:10)
+        !do i=1,nsize-1,10
+        !    write(*,'(30(" "), 10F10.6)')  x(i:i+9)
+        !end do
         write(*,'(A30, F10.6, A)') 'Elapsed time:', end_time-start_time, ' secs.'
     END SUBROUTINE test_hilbert_mgsr
 END PROGRAM TEST_HILBERT

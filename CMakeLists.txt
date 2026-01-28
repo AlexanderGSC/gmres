@@ -15,7 +15,7 @@ endif()
 #find_package(LAPACK REQUIRED)
 
 #Add GMRES Library
-add_library(gmres_lib src/gmres_mgsr.f90 src/gmres_hh.f90 src/matrix_utils.f90)
+add_library(gmres_lib src/gmres_mgsr.f90 src/gmres_hh.f90 src/matrix_utils.f90 src/precond.f90)
 
 #Poisson
 add_executable(test_poisson tests/test_poisson.f90)

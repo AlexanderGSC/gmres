@@ -14,6 +14,5 @@ CONTAINS
             A(i,:) = A(i,:) / d
             A(i,i) = 1.0d0
         end do
-            
     END SUBROUTINE jacobi
 END MODULE PRECOND   
