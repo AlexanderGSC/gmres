@@ -26,7 +26,7 @@ CONTAINS
         IMPLICIT none
         integer, intent(in)::nsize
         integer, intent(inout)::max_iter
-        real(8), allocatable::A(:,:),b(:),x(:),errn(:),verr(:)
+        real(8), allocatable:: A(:,:), b(:),x(:),errn(:),verr(:)
         real(8)::tol
         integer::n_iter,n_stages
         real(8)::start_time, end_time
@@ -34,9 +34,9 @@ CONTAINS
 
         write(*,'(A)') 'GMRES Poisson 2D Test (Householder version)'
         write(*,'(A I5 A9 I5 A5 ES10.2)') "N=", nsize*nsize, " MAX ITER=", max_iter, " TOL=", tol
-
-        allocate(errn(max_iter))
         call generate_poisson(A,b,nsize)
+        call jacobi(A,b)
+        !allocate(errn(max_iter))
         call cpu_time(start_time)
         call gmres_hh_restarted(A,b,x,max_iter,tol,errn,verr,n_iter,n_stages)
         call cpu_time(end_time)
@@ -49,8 +49,6 @@ CONTAINS
         write(*,'(A30, F10.6, A)') 'Elapsed time:', end_time-start_time, ' secs.'
     END SUBROUTINE test_Poisson_2DHH
 
-
-
     SUBROUTINE test_Poisson_2DMGSR(nsize, max_iter)
         integer, intent(in)::nsize
         integer, intent(in)::max_iter
@@ -59,15 +57,16 @@ CONTAINS
         integer::n_iter
         real(8)::start_time, end_time
         tol = 1.d-15
+        
         write(*,'(A)') 'GMRES Poisson 2D Test (MGS with reorthogonalization)'
         write(*,'(A I5 A I6 A ES10.2)') "N=", nsize*nsize, " MAX ITER=", max_iter, " TOL=", tol
 
-        allocate(errn(max_iter),verr(max_iter))
+        !allocate(errn(max_iter),verr(max_iter))
 
         call generate_poisson(A,b,nsize)
         call jacobi(A,b)
         call cpu_time(start_time)
-        call gmres_mgsr(A,b,x,1000,tol,errn,verr,n_iter)
+        call gmres_mgsr(A,b,x,max_iter,tol,errn,verr,n_iter)
         call cpu_time(end_time)
         write(*,'(A30, I4, A, I4)') 'Iterations until convergence:', n_iter, ' MAX=', max_iter
         write(*,'(A30, ES12.4)') "Final ||I - V.t * V||:", verr(n_iter)

@@ -55,7 +55,7 @@ MODULE GMRES_MGSR_MOD
             g(j+1)=-sn(j)*tmp + cs(j)*g(j+1)
             !----------END GIVENS-------------------------
             final_err(j) = abs(g(j+1)) / beta
-            if (h_val < 1d-12 .or. final_err(j) < tol) then
+            if (h_val < tol .or. final_err(j) < tol) then
                 n_out = j
                 exit
             else
