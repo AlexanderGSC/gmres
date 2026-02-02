@@ -29,7 +29,7 @@ CONTAINS
         real(8)::tol
         integer::n_iter,n_stages,num_threads
         real(8)::start_time, end_time
-        tol = 1.d-6
+        tol = 1.d-15
         !$omp parallel
             if (omp_get_thread_num() == 0) num_threads = omp_get_num_threads()
         !$omp end parallel
@@ -40,9 +40,9 @@ CONTAINS
         write(*,'(A I8 A18 I5 A5 ES10.2 A10 I2)') "N=", nsize*nsize, " MAX ITERS/STAGE=", max_iter, & 
               & " TOL=", tol, "THREADS=",num_threads
         start_time = omp_get_wtime()
-        call gmres_hh_mf(stv_poisson,b,x,max_iter,tol,errn,verr,n_iter,n_stages)
+        call gmres_mgsr_mf(stv_poisson,b,x,max_iter,tol,errn,verr,n_iter,n_stages)
         end_time = omp_get_wtime()
-        write(*,'(A30, I6, A10, I3)') 'Iterations until convergence:', (n_stages-1)*max_iter+n_iter, ' Stages=', n_stages
+        write(*,'(A30, I8, A10, I4)') 'Iterations until convergence:', (n_stages-1)*max_iter+n_iter, ' Stages=', n_stages
         write(*,'(A30, ES12.4)') "Final ||I - V.t * V||:", verr(n_iter)
         write(*,'(A30, ES12.4)') 'Final residual:', errn(n_iter) 
         write(*,'(A30, ES12.4)') 'Max error L_max:', maxval(abs(x - 1.0d0))
@@ -56,7 +56,7 @@ CONTAINS
         real(8), intent(out):: y(:)
         integer, intent(in)::n
         integer i,j,idx
-        !$omp parallel do collapse(2) default(none) private(idx) shared(x,y,n)
+        !!$omp do collapse(2), private(idx)
         do j=1,n
             do i=1,n
                 idx = i + (j-1)*n
@@ -67,7 +67,7 @@ CONTAINS
                 if (j < n) y(idx) = y(idx) -1.0 * x(idx+n)
             end do
         end do
-        !$omp end parallel do
+        !!$omp end do
     END SUBROUTINE stv_poisson
 
 END PROGRAM TEST_POISSON_MF

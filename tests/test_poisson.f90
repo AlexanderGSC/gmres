@@ -9,7 +9,7 @@ PROGRAM TEST_POISSON
 
     n_args = command_argument_count()
     if (n_args < 1) then
-        print *, "usage ./test_poisson <size> <max_iterations>"
+        print *, "usage ./test_poisson <size> <max iterations per stage>"
         stop
     end if
     call get_command_argument(1, arg_str)
@@ -32,8 +32,8 @@ CONTAINS
         real(8)::start_time, end_time
         tol = 1.d-15
 
-        write(*,'(A)') 'GMRES Poisson 2D Test (Householder version)'
-        write(*,'(A I5 A9 I5 A5 ES10.2)') "N=", nsize*nsize, " MAX ITER=", max_iter, " TOL=", tol
+        write(*,'(A)') 'GMRES Poisson 2D Test (Householder Restarted version)'
+        write(*,'(A I5 A9 I5 A5 ES10.2)') "N=", nsize*nsize, " ITER/STAGE=", max_iter, " TOL=", tol
         call generate_poisson(A,b,nsize)
         call jacobi(A,b)
         !allocate(errn(max_iter))
@@ -54,21 +54,21 @@ CONTAINS
         integer, intent(in)::max_iter
         real(8), allocatable::A(:,:),b(:),x(:),errn(:),verr(:)
         real(8)::tol
-        integer::n_iter
+        integer::n_iter, n_stages
         real(8)::start_time, end_time
         tol = 1.d-15
         
-        write(*,'(A)') 'GMRES Poisson 2D Test (MGS with reorthogonalization)'
-        write(*,'(A I5 A I6 A ES10.2)') "N=", nsize*nsize, " MAX ITER=", max_iter, " TOL=", tol
+        write(*,'(A)') 'GMRES Poisson 2D Test (MGSR restarted version)'
+        write(*,'(A I5 A I6 A ES10.2)') "N=", nsize*nsize, " ITER/STAGE=", max_iter, " TOL=", tol
 
         !allocate(errn(max_iter),verr(max_iter))
 
         call generate_poisson(A,b,nsize)
         call jacobi(A,b)
         call cpu_time(start_time)
-        call gmres_mgsr(A,b,x,max_iter,tol,errn,verr,n_iter)
+        call gmres_mgsr_restarted(A,b,x,max_iter,tol,errn,verr,n_iter,n_stages)
         call cpu_time(end_time)
-        write(*,'(A30, I4, A, I4)') 'Iterations until convergence:', n_iter, ' MAX=', max_iter
+        write(*,'(A30, I6, A10, I3)') 'Iterations until convergence:', (n_stages-1)*max_iter+n_iter, ' Stages=', n_stages
         write(*,'(A30, ES12.4)') "Final ||I - V.t * V||:", verr(n_iter)
         write(*,'(A30, ES12.4)') 'Final residual:', errn(n_iter) 
         write(*,'(A30, ES12.4)') 'Max error L_max:', maxval(abs(x - 1.0d0))

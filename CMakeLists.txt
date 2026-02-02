@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(GMRES_Solver Fortran)
 
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -fopenmp -march=native -funroll-loops")
-
+#set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -fopenmp -march=native -funroll-loops -g")
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -fopenmp -march=native -funroll-loops -g -fno-omit-frame-pointer")
 # Search OpenMP
 find_package(OpenMP REQUIRED)
 # Configure optimization flags for GNU
