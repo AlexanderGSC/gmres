@@ -2,7 +2,8 @@ PROGRAM TEST_POISSON
     use gmres_mgsr_mod
     use gmres_hh_mod
     use matrix_utils
-    use precond
+    use chebyshev_precond
+    use interfaces
     implicit none
     integer::nsize,max_iter,n_args
     character(len=32)::arg_str
@@ -35,7 +36,7 @@ CONTAINS
         write(*,'(A)') 'GMRES Poisson 2D Test (Householder Restarted version)'
         write(*,'(A I5 A9 I5 A5 ES10.2)') "N=", nsize*nsize, " ITER/STAGE=", max_iter, " TOL=", tol
         call generate_poisson(A,b,nsize)
-        call jacobi(A,b)
+        !call jacobi(A,b)
         !allocate(errn(max_iter))
         call cpu_time(start_time)
         call gmres_hh_restarted(A,b,x,max_iter,tol,errn,verr,n_iter,n_stages)
@@ -64,7 +65,7 @@ CONTAINS
         !allocate(errn(max_iter),verr(max_iter))
 
         call generate_poisson(A,b,nsize)
-        call jacobi(A,b)
+        !call jacobi(A,b)
         call cpu_time(start_time)
         call gmres_mgsr_restarted(A,b,x,max_iter,tol,errn,verr,n_iter,n_stages)
         call cpu_time(end_time)

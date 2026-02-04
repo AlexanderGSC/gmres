@@ -1,7 +1,9 @@
 PROGRAM TEST_POISSON_MF
+    use interfaces
     use omp_lib
     use gmres_mf
     use matrix_utils
+    use chebyshev_precond
     implicit none
     integer::nsize,max_iter,n_args
     character(len=32)::arg_str
@@ -29,18 +31,20 @@ CONTAINS
         real(8)::tol
         integer::n_iter,n_stages,num_threads
         real(8)::start_time, end_time
-        tol = 1.d-15
+        real(8), allocatable :: params(:)
+        tol = 1.d-12
         !$omp parallel
             if (omp_get_thread_num() == 0) num_threads = omp_get_num_threads()
         !$omp end parallel
-        allocate(b(nsize*nsize), x(nsize*nsize))
+        allocate(b(nsize*nsize), x(nsize*nsize),params(2))
+        params(1) = 8.2d0; params(2) = 0.2d0
         x = 1.0d0
         call stv_poisson2(x,b,nsize)! b = A*1 all solutions must be 1.0
-        write(*,'(A)') 'GMRES Poisson 2D Test Matrix Free (Householder version)'
+        write(*,'(A)') 'GMRES Poisson 2D Test Matrix Free (MGS Chebyshev)'
         write(*,'(A I8 A18 I5 A8 ES10.2 A10 I2)') "N VARS=", nsize*nsize, " MAX ITERS/STAGE=", max_iter, & 
               & " TOL=", tol, "THREADS=",num_threads
         start_time = omp_get_wtime()
-        call gmres_hh_mf(stv_poisson2,b,x,max_iter,tol,errn,verr,n_iter,n_stages)
+        call gmres_mgsr_mf(stv_poisson2,b,x,max_iter,tol,errn,verr,n_iter,n_stages,cbpr2,params)
         end_time = omp_get_wtime()
         write(*,'(A30, I8, A10, I4)') 'Iterations until convergence:', (n_stages-1)*max_iter+n_iter, ' Stages=', n_stages
         write(*,'(A30, ES12.4)') "Final ||I - V.t * V||:", verr(n_iter)
@@ -58,7 +62,7 @@ CONTAINS
         real(8)::tol
         integer::n_iter,n_stages,num_threads
         real(8)::start_time, end_time
-        tol = 1.d-15
+        tol = 1.d-12
         !$omp parallel
             if (omp_get_thread_num() == 0) num_threads = omp_get_num_threads()
         !$omp end parallel
@@ -144,5 +148,4 @@ CONTAINS
         y(idx)= 4.0d0*x(idx)-1.0d0*(x(idx-1)+x(idx-n)) !row=n, col=n                             
         !$omp end single
     END SUBROUTINE stv_poisson2
-
 END PROGRAM TEST_POISSON_MF
