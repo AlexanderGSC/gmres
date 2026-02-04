@@ -15,79 +15,119 @@ MODULE GMRES_MF
     end interface
 CONTAINS
 
-    subroutine gmres_mgsr_mf(Ax_vec, b, x, m, tol,final_err,v_err,n_out,restart_out)
+    subroutine gmres_mgsr_mf_mpo(Ax_vec, b, x, m, tol,final_err,v_err,n_out,restart_out)
         procedure(stencil_vector) :: Ax_vec !Operator A b = x
-        real(8), intent(in) :: b(:)     !Initial vector
+        real(8), intent(in) :: b(:)         !Initial vector
         real(8), allocatable, intent(out):: x(:) !Sol. vector
-        integer, intent(in) :: m        !Max iterations
-        real(8), intent(in) :: tol      !Max tolerance
-        real(8), allocatable, intent(out):: final_err(:), v_err(:) !size of the error of the subspace
-        integer, intent(out):: n_out    !Iterations done
-        integer, intent(out):: restart_out !Num 
-        real(8), allocatable:: V(:,:), H(:,:)!V and Hessemberg
+        integer, intent(in) :: m            !Max iterations
+        real(8), intent(in) :: tol          !Max tolerance
+        real(8), allocatable, intent(out):: final_err(:) !residual of the solution 
+        real(8), allocatable, intent(out):: v_err(:) !orthogonality error
+        integer, intent(out):: n_out        !Iterations done
+        integer, intent(out):: restart_out  !Num of restarts done 
+        real(8), allocatable:: V(:,:), H(:,:)!V and Hessemberg matrixes
         ! Other variables
-        integer :: i, j, k, n, st, nsize
+        integer :: i, j, k, n, st, idx, nsize
         real(8), allocatable:: w(:), g(:), y(:)
         real(8) :: tmp, ds, h_val, h_tmp, beta, beta0
-        real(8), allocatable:: cs(:), sn(:)
-        n = size(b,1)
-        nsize = int(sqrt(real(n)))
+        real(8), allocatable:: cs(:), sn(:) !givens rotations
+        !--------------------------------------------------------------------------
+        n = size(b,1)               !n defines the size of the problem
+        nsize = int(sqrt(real(n)))  !nsize defines the size of the grid
+        !--------------------------------------------------------------------------
+        !Allocating and initialization
         allocate(V(n,m+1),y(m),H(m+1,m), x(n), final_err(m), v_err(m+1), w(n), g(m+1))
         allocate(cs(m),sn(m))
         V = 0.0d0;H=0.0d0;final_err=0.0d0;v_err=0.0d0;g=0.0d0;x=0.0d0
+        !--------------------------------------------------------------------------
+        ! beta0 = ||b - A x0||, usually we take x0 = 0
         beta0 = norm2(b)
+        !the outer loop is the number of stages we compute
         do st=1,stages
-            g = 0.0d0; H = 0.0d0; V = 0.0d0
-            call Ax_vec(x,w,nsize)
-            w = b - w
-            beta = norm2(w)
-            V(:,1) = w / beta
-            g(1)   = beta
+            !$omp parallel private(i,k,idx)
+                !$omp workshare 
+                g = 0.0d0; H = 0.0d0; V = 0.0d0
+                !$omp end workshare
+                call Ax_vec(x,w,nsize)
+                !$omp do 
+                    do idx=1,n
+                        w(idx) = b(idx) - w(idx)
+                    end do
+                !$omp end do
+                !w = b - w           !w = b - Ax
+                !$omp single
+                beta = norm2(w)     !beta = ||w||
+                g(1)   = beta       !g is rhs of Hessemberg's system
+                !$omp end single
+                !$omp do
+                    do idx=1,n
+                        V(idx,1) = w(idx) / beta
+                    end do
+                !$omp end do
+                !V(:,1) = w / beta   !stores the first vector of the orthogonal basis
+            !$omp end parallel 
+            !the inner loop: Arnoli's Iteration
+            !$omp parallel
             do j=1,m
-                
-                n_out = j
                 call Ax_vec(V(:,j), w, nsize)
                 ! ----------- Modified Gram Schmidt (MGSR) -------------
                 ! the sequential process is required in order to converge
                 ! better orthogonalization.
                 do k=1,2 ! Twice is enough for reorthogonalization
                     do i=1,j
-                        h_tmp = dot_product(w, V(:,i))
+                        !$omp single
+                        h_tmp = 0.0d0
+                        !$omp end single
+                        !$omp do reduction(+:h_tmp)
+                        do idx=1,n !h_tmp = dot_product(w, V(:,i))
+                            h_tmp = h_tmp + w(idx)*V(idx,i)
+                        end do 
+                        !$omp end do
+                        !$omp master
                         H(i,j) = H(i,j) + h_tmp
-                        w = w - h_tmp*V(:,i)
+                        !$omp end master
+                        !$omp do
+                        do idx=1,n !w = w - h_tmp*V(:,i)
+                            w(idx) = w(idx) - h_tmp*V(idx,i)
+                        end do
+                        !$omp end do
                     end do
                 end do
+                !$omp single
                 h_val = norm2(w)
                 H(j+1,j) = h_val
-                !------ GIVENS ------------------------
-                do i=1,j-1
+                !------ GIVENS ROTATIONS ------------------------
+                do i=1,j-1          !performs all previoous rotations 
                     tmp     = H(i,j)
                     H(i,j)  = cs(i)*tmp + sn(i)*H(i+1,j)
                     H(i+1,j)=-sn(i)*tmp + cs(i)*H(i+1,j)
                 end do
                 ds    = hypot(H(j+1,j),H(j,j))
-                cs(j) = H(j,j) / ds
+                cs(j) = H(j,j) / ds !calculate the new rotation
                 sn(j) = H(j+1,j) / ds
                 H(j,j)= cs(j)*H(j,j) + sn(j)*H(j+1,j)
                 H(j+1,j) = 0.0d0
                 tmp=g(j)
                 !Apply the last rotation to g
+                !In order to solver the system H y = g, we need to perform all
+                !rotations to rhs g
                 g(j)  = cs(j)*tmp + sn(j)*g(j+1)
                 g(j+1)=-sn(j)*tmp + cs(j)*g(j+1)
                 !----------END GIVENS-------------------------
+                !residual error is computed as g(j+1)
                 final_err(j) = abs(g(j+1)) / beta0
-                if (h_val < tol .or. final_err(j) < tol) then
-                    n_out = j
-                    exit
-                end if
                 V(:,j+1) = w / h_val
-            end do !Arnoldi j end loop 
+                n_out = j
+                !$omp end single
+            end do !Arnoldi j end loop
+            !$omp end parallel
+            !Solving the triangular system H y = g, using backward sustitution
             y = 0.0d0
             y(n_out) = g(n_out) / H(n_out,n_out)
             do i=n_out-1,1,-1
                 y(i) = (g(i) - dot_product(H(i,i+1:n_out),y(i+1:n_out))) / H(i,i)
             end do
-        
+            !update the solution vector 
             x = x + matmul(V(:,1:n_out),y(1:n_out))
             !print *, "STAGE=",st,"IT=",(st-1)*m+n_out, "ERROR=", final_err(n_out)
             if (h_val < tol .or. final_err(n_out) < tol) then
@@ -102,7 +142,7 @@ CONTAINS
             v_err(j+1) = v_err(j+1) + (dot_product(V(:,j+1),V(:,j+1))-1.0d0)**2
             v_err(j+1) = sqrt(v_err(j)**2 + v_err(j+1))
         end do
-    end subroutine gmres_mgsr_mf
+    end subroutine gmres_mgsr_mf_mpo
 
     subroutine gmres_hh_mf(Ax_vec,b,x,m,tol,final_err,v_err,n_out,stages_out)
         procedure(stencil_vector) :: Ax_vec !Operator A b = x
@@ -147,7 +187,7 @@ CONTAINS
             g(1) = -sign(beta,w(1))
             w(1) = sign(beta,w(1)) + w(1)
             P(:,1) = w / norm2(w) !new reflector
-            !$omp parallel default(shared), private(i,j,omp_idx)
+            !$omp parallel
             do j=1,m   
                 !v_j=0.0d0;v_j(j)=1.0d0 !canonical vector v = ej (canonical))
                 !$omp do     
@@ -339,4 +379,104 @@ CONTAINS
         !x = matmul(V,y(1:n_iter))
         !$omp end parallel 
     end subroutine calculate_verr
+
+
+        subroutine gmres_mgsr_mf(Ax_vec, b, x, m, tol,final_err,v_err,n_out,restart_out)
+        procedure(stencil_vector) :: Ax_vec !Operator A b = x
+        real(8), intent(in) :: b(:)         !Initial vector
+        real(8), allocatable, intent(out):: x(:) !Sol. vector
+        integer, intent(in) :: m            !Max iterations
+        real(8), intent(in) :: tol          !Max tolerance
+        real(8), allocatable, intent(out):: final_err(:) !residual of the solution 
+        real(8), allocatable, intent(out):: v_err(:) !orthogonality error
+        integer, intent(out):: n_out        !Iterations done
+        integer, intent(out):: restart_out  !Num of restarts done 
+        real(8), allocatable:: V(:,:), H(:,:)!V and Hessemberg matrixes
+        ! Other variables
+        integer :: i, j, k, n, st, nsize
+        real(8), allocatable:: w(:), g(:), y(:)
+        real(8) :: tmp, ds, h_val, h_tmp, beta, beta0
+        real(8), allocatable:: cs(:), sn(:) !givens rotations
+        n = size(b,1)               !n defines the size of the problem
+        nsize = int(sqrt(real(n)))  !nsize defines the size of the grid
+        !--------------------------------------------------------------------------
+        !Allocating and initialization
+        allocate(V(n,m+1),y(m),H(m+1,m), x(n), final_err(m), v_err(m+1), w(n), g(m+1))
+        allocate(cs(m),sn(m))
+        V = 0.0d0;H=0.0d0;final_err=0.0d0;v_err=0.0d0;g=0.0d0;x=0.0d0
+        !--------------------------------------------------------------------------
+        ! beta0 = ||b - A x0||, usually we take x0 = 0
+        beta0 = norm2(b)
+        !the outer loop is the number of stageswe compute
+        do st=1,stages
+            g = 0.0d0; H = 0.0d0; V = 0.0d0
+            call Ax_vec(x,w,nsize) 
+            w = b - w           !w = b - Ax
+            beta = norm2(w)     !beta = ||w||
+            V(:,1) = w / beta   !stores the first vector of the orthogonal basis
+            g(1)   = beta       !g is rhs of Hessemberg's system
+            !the inner loop: Arnoli's Iteration
+            do j=1,m
+                n_out = j
+                call Ax_vec(V(:,j), w, nsize)
+                ! ----------- Modified Gram Schmidt (MGSR) -------------
+                ! the sequential process is required in order to converge
+                ! better orthogonalization.
+                do k=1,2 ! Twice is enough for reorthogonalization
+                    do i=1,j
+                        h_tmp = dot_product(w, V(:,i))
+                        H(i,j) = H(i,j) + h_tmp
+                        w = w - h_tmp*V(:,i)
+                    end do
+                end do
+                h_val = norm2(w)
+                H(j+1,j) = h_val
+                !------ GIVENS ROTATIONS ------------------------
+                do i=1,j-1          !performs all previoous rotations 
+                    tmp     = H(i,j)
+                    H(i,j)  = cs(i)*tmp + sn(i)*H(i+1,j)
+                    H(i+1,j)=-sn(i)*tmp + cs(i)*H(i+1,j)
+                end do
+                ds    = hypot(H(j+1,j),H(j,j))
+                cs(j) = H(j,j) / ds !calculate the new rotation
+                sn(j) = H(j+1,j) / ds
+                H(j,j)= cs(j)*H(j,j) + sn(j)*H(j+1,j)
+                H(j+1,j) = 0.0d0
+                tmp=g(j)
+                !Apply the last rotation to g
+                !In order to solver the system H y = g, we need to perform all
+                !rotations to rhs g
+                g(j)  = cs(j)*tmp + sn(j)*g(j+1)
+                g(j+1)=-sn(j)*tmp + cs(j)*g(j+1)
+                !----------END GIVENS-------------------------
+                !residual error is computed as g(j+1)
+                final_err(j) = abs(g(j+1)) / beta0
+                if (h_val < tol .or. final_err(j) < tol) then
+                    n_out = j
+                    exit
+                end if
+                V(:,j+1) = w / h_val
+            end do !Arnoldi j end loop
+            !Solving the triangular system H y = g, using backward sustitution
+            y = 0.0d0
+            y(n_out) = g(n_out) / H(n_out,n_out)
+            do i=n_out-1,1,-1
+                y(i) = (g(i) - dot_product(H(i,i+1:n_out),y(i+1:n_out))) / H(i,i)
+            end do
+            !update the solution vector 
+            x = x + matmul(V(:,1:n_out),y(1:n_out))
+            !print *, "STAGE=",st,"IT=",(st-1)*m+n_out, "ERROR=", final_err(n_out)
+            if (h_val < tol .or. final_err(n_out) < tol) then
+                restart_out = st
+                exit
+            end if
+        end do !restart k loop
+        do j=1,n_out !Sizing the orthogonality 
+            do i=1,j
+                v_err(j+1) = v_err(j+1) + 2.0*(dot_product(V(:,i),V(:,j+1))**2)
+            end do
+            v_err(j+1) = v_err(j+1) + (dot_product(V(:,j+1),V(:,j+1))-1.0d0)**2
+            v_err(j+1) = sqrt(v_err(j)**2 + v_err(j+1))
+        end do
+    end subroutine gmres_mgsr_mf
 END MODULE GMRES_MF
