@@ -32,15 +32,13 @@ CONTAINS
         integer::n_iter,n_stages,num_threads
         real(8)::start_time, end_time
         real(8), allocatable :: params(:)
-        tol = 1.d-12
-        !$omp parallel
-            if (omp_get_thread_num() == 0) num_threads = omp_get_num_threads()
-        !$omp end parallel
+        tol = 1.d-15
+        if (omp_get_thread_num() == 0) num_threads = omp_get_num_threads()
         allocate(b(nsize*nsize), x(nsize*nsize),params(2))
         params(1) = 8.2d0; params(2) = 0.2d0
         x = 1.0d0
         call stv_poisson2(x,b,nsize)! b = A*1 all solutions must be 1.0
-        write(*,'(A)') 'GMRES Poisson 2D Test Matrix Free (MGS Chebyshev)'
+        write(*,'(A)') 'GMRES Poisson 2D Test Matrix Free (MGSR Chebyshev)'
         write(*,'(A I8 A18 I5 A8 ES10.2 A10 I2)') "N VARS=", nsize*nsize, " MAX ITERS/STAGE=", max_iter, & 
               & " TOL=", tol, "THREADS=",num_threads
         start_time = omp_get_wtime()
@@ -62,18 +60,20 @@ CONTAINS
         real(8)::tol
         integer::n_iter,n_stages,num_threads
         real(8)::start_time, end_time
-        tol = 1.d-12
+        real(8), allocatable :: params(:)
+        tol = 1.d-15
         !$omp parallel
             if (omp_get_thread_num() == 0) num_threads = omp_get_num_threads()
         !$omp end parallel
-        allocate(b(nsize*nsize), x(nsize*nsize))
+        allocate(b(nsize*nsize), x(nsize*nsize), params(2))
+        params(1) = 8.2d0; params(2) = 0.2d0
         x = 1.0d0
         call stv_poisson2(x,b,nsize)! b = A*1 all solutions must be 1.0
-        write(*,'(A)') 'GMRES Poisson 2D Test Matrix Free (MGSR version)'
+        write(*,'(A)') 'GMRES Poisson 2D Test Matrix Free (MGSR MPOpen Chebyshev version)'
         write(*,'(A I8 A18 I5 A8 ES10.2 A10 I2)') "N VARS=", nsize*nsize, " MAX ITERS/STAGE=", max_iter, & 
               & " TOL=", tol, "THREADS=",num_threads
         start_time = omp_get_wtime()
-        call gmres_mgsr_mf_mpo(stv_poisson2,b,x,max_iter,tol,errn,verr,n_iter,n_stages)
+        call gmres_mgsr_mf_mpo(stv_poisson2,b,x,max_iter,tol,errn,verr,n_iter,n_stages,cbpr2,params)
         end_time = omp_get_wtime()
         write(*,'(A30, I8, A10, I4)') 'Iterations until convergence:', (n_stages-1)*max_iter+n_iter, ' Stages=', n_stages
         write(*,'(A30, ES12.4)') "Final ||I - V.t * V||:", verr(n_iter)
@@ -120,19 +120,19 @@ CONTAINS
         do i=2,n-1 !borders col=1
             y(i)   = 4.0d0*x(i) - 1.0d0*(x(i-1)+x(i+1)+x(i+n)) !col=1
         end do
-        !$omp do private(idx)
+        !$omp do nowait private(idx)
         do i=2,n-1 !borders col=n
             idx = n*n-n+i
             y(idx) = 4.0d0*x(idx)-1.0d0*(x(idx-1)+x(idx+1)+x(idx-n))
         end do
         !$omp end do
-        !$omp do private(idx) !borders row=1
+        !$omp do nowait private(idx) !borders row=1
         do i=2,n-1
             idx  = (i-1)*n+1 
             y(idx) = 4.0d0*x(idx)-1.0d0*(x(idx+1)+x(idx+n)+x(idx-n))
         end do
         !$omp end do
-        !$omp do private(idx)
+        !$omp do nowait private(idx)
         do i=2,n-1
             idx  = (i-1)*n+n !row=n
             y(idx) = 4.0d0*x(idx)-1.0d0*(x(idx-1)+x(idx+n)+x(idx-n))

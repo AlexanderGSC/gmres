@@ -10,7 +10,7 @@ MODULE GMRES_MF
 
 CONTAINS
 
-    subroutine gmres_mgsr_mf_mpo(Ax_vec, b, x, m, tol,final_err,v_err,n_out,restart_out)
+    subroutine gmres_mgsr_mf_mpo(Ax_vec, b, x, m, tol,final_err,v_err,n_out,restart_out,M_inv,params)
         procedure(stencil_vector) :: Ax_vec !Operator A x 
         real(8), intent(in) :: b(:)         !Initial vector
         real(8), allocatable, intent(out):: x(:) !Sol. vector
@@ -19,11 +19,13 @@ CONTAINS
         real(8), allocatable, intent(out):: final_err(:) !residual of the solution 
         real(8), allocatable, intent(out):: v_err(:) !orthogonality error
         integer, intent(out):: n_out        !Iterations done
-        integer, intent(out):: restart_out  !Num of restarts done 
+        integer, intent(out):: restart_out  !Num of restarts done
+        procedure(precond) :: M_inv          !Preconditioner
+        real(8), intent(in) :: params(:)     !Preconditioner params 
         real(8), allocatable:: V(:,:), H(:,:)!V and Hessemberg matrixes
         ! Other variables
         integer :: i, j, k, n, st, idx, nsize
-        real(8), allocatable:: w(:), g(:), y(:)
+        real(8), allocatable:: w(:), g(:), y(:), z(:), aux(:)
         real(8) :: tmp, ds, h_val, h_tmp, beta, beta0
         real(8), allocatable:: cs(:), sn(:) !givens rotations
         !--------------------------------------------------------------------------
@@ -31,7 +33,7 @@ CONTAINS
         nsize = int(sqrt(real(n)))  !nsize defines the size of the grid
         !--------------------------------------------------------------------------
         !Allocating and initialization
-        allocate(V(n,m+1),y(m),H(m+1,m), x(n), final_err(m), v_err(m+1), w(n), g(m+1))
+        allocate(V(n,m+1),y(m),H(m+1,m), x(n), z(n),aux(n), final_err(m), v_err(m+1), w(n), g(m+1))
         allocate(cs(m),sn(m))
         V = 0.0d0;H=0.0d0;final_err=0.0d0;v_err=0.0d0;g=0.0d0;x=0.0d0
         !--------------------------------------------------------------------------
@@ -39,17 +41,17 @@ CONTAINS
         beta0 = norm2(b)
         !the outer loop is the number of stages we compute
         do st=1,stages
-            !$omp parallel private(idx)
+            !$omp parallel
                 !$omp workshare 
                 g = 0.0d0; H = 0.0d0; V = 0.0d0
                 !$omp end workshare
-                call Ax_vec(x,w,nsize)
-                !$omp do 
-                    do idx=1,n
-                        w(idx) = b(idx) - w(idx)
+                call Ax_vec(x,w,nsize)  !w = Ax
+                !$omp do
+                    do idx=1,n            !z = b - w  
+                        z(idx) = b(idx) - w(idx)
                     end do
-                !$omp end do
-                !w = b - w           !w = b - Ax
+                !$omp end do 
+                call M_inv(Ax_vec,z,w,aux,params,nsize) !precond M^-1 z = w
                 !$omp single
                 beta = norm2(w)     !beta = ||w||
                 g(1)   = beta       !g is rhs of Hessemberg's system
@@ -64,7 +66,8 @@ CONTAINS
             !the inner loop: Arnoli's Iteration
             !$omp parallel
             do j=1,m
-                call Ax_vec(V(:,j), w, nsize)
+                call Ax_vec(V(:,j), z, nsize) !z = A * V(:,j)
+                call M_inv(Ax_vec,z,w,aux,params,nsize) !precond w = M^-1 z
                 ! ----------- Modified Gram Schmidt (MGSR) -------------
                 ! the sequential process is required in order to converge
                 ! better orthogonalization.
