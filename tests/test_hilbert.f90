@@ -1,8 +1,7 @@
 PROGRAM TEST_HILBERT
     use gmres_mgsr_mod
     use gmres_hh_mod
-    use matrix_utils
-    use precond
+    use hilbert
     implicit none
     integer::nsize,max_iter,n_args
     character(len=32)::arg_str
@@ -28,7 +27,7 @@ CONTAINS
         integer, intent(in)::max_iter
         real(8), allocatable::A(:,:),b(:),x(:),errn(:),verr(:)
         real(8)::tol
-        integer::n_iter
+        integer::n_iter, n_stages
         real(8)::start_time, end_time
         tol = 1.d-15
 
@@ -36,10 +35,13 @@ CONTAINS
         write(*,'(A I5 A I6 A ES10.2)') "N=", nsize, " MAX ITER=", max_iter, " TOL=", tol
 
         allocate(errn(max_iter))
-        call generate_hilbert(A,b,nsize)
+        call generate_matrix(A, nsize)
+        allocate(b(nsize))
+        b = 1.0d0
+        b = matmul(A,b)
 
         call cpu_time(start_time)
-        call gmres_hh(A,b,x,max_iter,tol,errn,verr,n_iter)
+        call gmres_hh_dense(A,b,x,max_iter,tol,errn,verr,n_iter,n_stages)
         call cpu_time(end_time)
         write(*,'(A30, I5, A, I5)') 'Ierations until convergence:', n_iter, ' MAX=', max_iter
         write(*,'(A30, ES12.4)') "Final ||I - V.t * V||:", verr(n_iter)
@@ -47,9 +49,6 @@ CONTAINS
         write(*,'(A30, ES12.4)') 'Max error L_max:', maxval(abs(x - 1.0d0))
         write(*,'(A30, ES12.4)') 'L2 norm:', norm2(x - 1.0d0)
         write(*,'(A30, 10F10.4)') 'Solution (first 10):',x(1:10)
-        !do i=1,nsize-1,10
-        !    write(*,'(30(" "), 10F10.6)')  x(i:i+9)
-        !end do
         write(*,'(A30, F10.6, A)') 'Elapsed time:', end_time-start_time, ' secs.'
         deallocate(A)
         deallocate(b,x,errn,verr)
@@ -59,7 +58,7 @@ CONTAINS
         integer, intent(in)::max_iter
         real(8), allocatable::A(:,:),b(:),x(:),errn(:),verr(:)
         real(8)::tol
-        integer::n_iter
+        integer::n_iter, n_stages
         real(8)::start_time, end_time
         tol = 1.d-15
         write(*,'(A)') 'GMRES Hilbert Matrix Test (MGS with reorthogonalization)'
@@ -67,10 +66,13 @@ CONTAINS
 
         allocate(errn(max_iter),verr(max_iter))
 
-        call generate_hilbert(A,b,nsize)
+        call generate_matrix(A, nsize)
+        allocate(b(nsize))
+        b = 1.0d0
+        b = matmul(A,b)
 
         call cpu_time(start_time)
-        call gmres_mgsr(A,b,x,max_iter,tol,errn,verr,n_iter)
+        call gmres_mgsr_dense(A,b,x,max_iter,tol,errn,verr,n_iter, n_stages)
         call cpu_time(end_time)
         write(*,'(A30, I4, A, I4)') 'Ierations until convergence:', n_iter, ' MAX=', max_iter
         write(*,'(A30, ES12.4)') "Final ||I - V.t * V||:", verr(n_iter)
@@ -78,9 +80,6 @@ CONTAINS
         write(*,'(A30, ES12.4)') 'Max error L_max:', maxval(abs(x - 1.0d0))
         write(*,'(A30, ES12.4)') 'L2 norm:', norm2(x - 1.0d0)
         write(*,'(A30, 10F10.4)') 'Solution (first 10):', x(1:10)
-        !do i=1,nsize-1,10
-        !    write(*,'(30(" "), 10F10.6)')  x(i:i+9)
-        !end do
         write(*,'(A30, F10.6, A)') 'Elapsed time:', end_time-start_time, ' secs.'
     END SUBROUTINE test_hilbert_mgsr
 END PROGRAM TEST_HILBERT
