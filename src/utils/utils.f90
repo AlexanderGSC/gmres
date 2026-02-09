@@ -37,15 +37,16 @@ CONTAINS
     subroutine print_header(header)
         character(len=110), intent(in) :: header
         print *, header
-        write(*,'(A3, A10, A10, A10, A10, A14, A14, A14, A14, A14, A10)') "#", "Vars", "Iters", &
-        & "Restarts", "gmres(n)","Tol.", "L2 Norm","L_inf Norm", "Residual", "||I-V.t*V||", "Time"
-        write(*, '(125("-"))')
+        write(*,'(A3, A10, A10, A10, A10, A14, A14, A14, A14, A14, A10, A15)') "#", "Vars", "Iters", &
+        & "Restarts", "gmres(n)","Tol.", "L2 Norm","L_inf Norm", "Residual", "||I-V.t*V||", "Time", "Info"
+        write(*, '(150("-"))')
     end subroutine print_header
 
-    subroutine print_line(test, nvars, cpu_time, iterations, restarts, max_iters, tol, errn, verr, l2, linf)
+    subroutine print_line(test, nvars, cpu_time, iterations, restarts, max_iters, tol, errn, verr, l2, linf,desc)
         integer, intent(in) :: test, nvars, iterations, restarts, max_iters
         real(8), intent(in):: cpu_time, errn, verr, l2, linf, tol
-        write(*,'(I3 I10, I10, I10, I10, ES14.4, ES14.4, ES14.4, ES14.4, ES14.4, F10.4)') test, nvars, iterations, &
-            & restarts, max_iters, tol, l2, linf, errn, verr, cpu_time
+        character(len=30)::desc
+        write(*,'(I3 I10, I10, I10, I10, ES14.2, ES14.4, ES14.4, ES14.4, ES14.4, F10.4 A20)') test, nvars, iterations, &
+            & restarts, max_iters, tol, l2, linf, errn, verr, cpu_time, desc
     end subroutine print_line
 END MODULE 

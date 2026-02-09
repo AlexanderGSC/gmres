@@ -43,11 +43,16 @@ target_link_libraries(test_mfp gmres_lib poisson_lib precond_lib)
 set_target_properties(test_mfp PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR})
 target_include_directories(test_mfp PRIVATE ${CMAKE_BINARY_DIR})
 
-#Matrix Free Poisson Test
-add_executable(test1 tests/test1.f90)
-target_link_libraries(test1 gmres_lib poisson_lib precond_lib utils_lib)
-set_target_properties(test1 PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR})
-target_include_directories(test1 PRIVATE ${CMAKE_BINARY_DIR})
+#Weak Scaling Test
+add_executable(weak_scaling tests/weak_scaling.f90)
+target_link_libraries(weak_scaling gmres_lib poisson_lib precond_lib utils_lib)
+set_target_properties(weak_scaling PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR})
+target_include_directories(weak_scaling PRIVATE ${CMAKE_BINARY_DIR})
+#Strong Scaling Test
+add_executable(strong_scaling tests/strong_scaling.f90)
+target_link_libraries(strong_scaling gmres_lib poisson_lib precond_lib utils_lib)
+set_target_properties(strong_scaling PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR})
+target_include_directories(strong_scaling PRIVATE ${CMAKE_BINARY_DIR})
 
 # Link OpenMP Libraries
 target_link_libraries(test_mfp OpenMP::OpenMP_Fortran)

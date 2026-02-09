@@ -8,7 +8,7 @@ MODULE GMRES_MGSR_MOD
     public :: gmres_mgsr_mf
     public :: gmres_mgsr_omp
     contains
-        subroutine gmres_mgsr_dense(A, b, x, m, tol,final_err,v_err,n_out,restart_out)
+    subroutine gmres_mgsr_dense(A, b, x, m, tol,final_err,v_err,n_out,restart_out)
         real(8), intent(in) :: A(:,:)   !Original matrix
         real(8), intent(in) :: b(:)     !Initial vector
         real(8), allocatable, intent(out):: x(:) !Sol. vector
@@ -288,6 +288,7 @@ MODULE GMRES_MGSR_MOD
         real(8), intent(in) :: params(:)     !Preconditioner params 
         real(8), allocatable:: V(:,:), H(:,:)!V and Hessemberg matrixes
         ! Other variables
+        logical :: converged
         integer :: i, j, k, n, st, idx, nsize
         real(8), allocatable:: w(:), g(:), y(:), z(:), aux(:)
         real(8) :: tmp, ds, h_val, h_tmp, beta, beta0
@@ -295,6 +296,7 @@ MODULE GMRES_MGSR_MOD
         !--------------------------------------------------------------------------
         n = size(b,1)               !n defines the size of the problem
         nsize = int(sqrt(real(n)))  !nsize defines the size of the grid
+        converged = .false.
         !--------------------------------------------------------------------------
         !Allocating and initialization
         allocate(V(n,m+1),y(m),H(m+1,m), x(n), z(n),aux(n), final_err(m), v_err(m+1), w(n), g(m+1))
@@ -330,6 +332,7 @@ MODULE GMRES_MGSR_MOD
             !the inner loop: Arnoli's Iteration
             !$omp parallel
             do j=1,m
+                if (converged) cycle
                 call Ax_vec(V(:,j), z, nsize) !z = A * V(:,j)
                 call M_inv(Ax_vec,z,w,aux,params,nsize) !precond w = M^-1 z
                 ! ----------- Modified Gram Schmidt (MGSR) -------------
@@ -379,6 +382,10 @@ MODULE GMRES_MGSR_MOD
                 !residual error is computed as g(j+1)
                 final_err(j) = abs(g(j+1)) / beta0
                 V(:,j+1) = w / h_val
+                if (final_err(j) < tol) then
+                    restart_out = st
+                    converged = .true.
+                end if
                 n_out = j
                 !$omp end single
             end do !Arnoldi j end loop
