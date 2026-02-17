@@ -1,15 +1,22 @@
-# GMRES Algorithm from Scratch
+# 🚀 Krylov Lab: High Performance Iterative Methods from Scratch
 
-This project implements the Generalized Minimal Residual (GMRES) algorithm from its fundamentals, exploring computational efficiency and numerical stability. It focuses on solving large and sparse linear systems, which are fundamental in High-Performance Computing (HPC) simulations.
+This repository is a laboratory for Krylov Subspace Methods, implementing state-of-the-art iterative solvers from the ground up. The project focuses on the intersection of numerical stability, algorithmic efficiency, and hardware-aware optimization (targeting future FPGA/HLS implementation).
 
 ## ✨ Key Features
-* Matrix-Free Implementation: Does not require storing matrix $A$; operates using matrix-vector products (user-defined operator).
-* Robust Stability: Implementation of Householder transformations following Walker's approach, ensuring a robust orthonormal basis.
-* Implementation of the numerical core in C Fortran 2008 and OpenMP. Subsequent migration to CUDA/C++ (under construction).
-* Use of a Chebyshev polynomial preconditioner to reduce the number of iterations until convergence. 
+* Diverse Solver Suite: GMRES: Robust nonsymmetric solver with Householder and MGS-R variants.BiCGSTAB: Efficient, short-memory nonsymmetric solver. Conjugate Gradient (CG): Optimal performance for Symmetric Positive Definite (SPD) systems.
+* Matrix-Free Architecture: Operates exclusively via user-defined stencil operators, eliminating $\mathcal{O}(N^2)$ storage requirements.
+* Numerical Precision: Householder-based GMRES achieving orthogonality limits of $\approx 10^{-30}$.
+* Spectral Preconditioning: Adaptive Chebyshev polynomial preconditioner with spectral radius estimation via Lanczos iteration.
 
-## 🚀 Project status
-Currently in development. Once a functional and validated version of the algorithm has been obtained, GPU parallelization via CUDA will be explored.
+## 📊  Performance & Scaling Analysis
+The laboratory includes a comprehensive benchmarking suite for Strong and Weak Scaling.
+1. The Power of Preconditioning (GMRES 78k vars)
+2. GMRES restart tuning
+3. Weak and Strong Scaling of GMRES/BICGSTAB/CG.
+
+## 🤖 Smart Restart Tuning (Experimental)
+GMRES performance is highly sensitive to the restart parameter ($n$). This project explores an adaptive tuning approach:The "Efficiency Valley": Empirical data shows that for a 90k Poisson problem, the optimal $m$ lies around 95. Smaller values suffer from "stagnation," while larger values incur quadratic orthogonalization costs. 
+* Future Work: Integration of a lightweight Neural Network (MLP) to predict the optimal $m$ based on initial residual decay and grid dimensions.
 
 ## 🚀 Roadmap
 [x] Modified Gram Schmidt base implementation with reorthogonalization.
@@ -18,22 +25,23 @@ Currently in development. Once a functional and validated version of the algorit
 
 [x] Chebyshev Matrix-Free Preconditioner.
 
-[ ] CUDA kernel for Block-Householder (WY Representation) and Stencil Vector products.
+[x] BICGSTAB and Conjugate Gradient Implementations.
 
-[ ] Integration in the Rosenbrock-Krylov scheme for reaction-diffusion.
+[ ] Porting to CUDA/C++ (WIP).
 
 ## 📁 Structure
-* `src/`: Contains the GMRES core modules (Householder and MGS versions).
+* `src/`: Contains the solvers core modules (Householder and MGS versions).
 * `preconds/`: contains the code for implemented preconditioners.
 * `problems/`: problems defined for testing the algorithm.
-* `tests/`: Unitary tests for GMRES (Poisson 2D, Hilbert matrix).
+* `tests/`: Unitary tests (Poisson 2D, Hilbert matrix).
 * `CMakeLists.txt`: Configuration for compiling with CMake.
 
-## 📊 Benchmarks de Validación
+## 📊 Validation Benchmarks
 The solver is validated with classic problems known for their ill-conditioning:
 
 * Hilbert matrices: famous for their extreme conditioning.
 * Poisson 2D: typical stencil operators in computational fluid dynamics (CFD).
+* Anisotropic Diffusion Equation (2D) (WIP)
 
 ## 🛠️ Compilation If you have `gfortran` and `cmake`, you can compile it like this: 
 ```
@@ -42,5 +50,9 @@ cmake ..
 make
 ```
 ## 📚 References
-* Walker, H. F. (1984). Implementation of the GMRES method using Householder transformations.
+* Trefethen, L. N., & Bau III, D. (1997). Numerical Linear Algebra. Society for Industrial and Applied Mathematics (SIAM).
 * Golub, G. H., & Van Loan, C. F. Matrix Computations.
+* Walker, H. F. (1984): Implementation of the GMRES method using Householder transformations.
+* Saad, Y. (2003): Iterative Methods for Sparse Linear Systems.
+* Van der Vorst, H. A. (1992): Bi-CGSTAB: A Fast and Smoothly Convergent Variant of Bi-CG.
+
