@@ -2,6 +2,8 @@
 
 This repository is a laboratory for Krylov Subspace Methods, implementing state-of-the-art iterative solvers from the ground up. The project focuses on the intersection of numerical stability, algorithmic efficiency, and hardware-aware optimization (targeting future FPGA/HLS implementation).
 
+* Project Goal: To bridge the gap between theoretical numerical stability and hardware-efficient implementations of Krylov subspace methods.
+
 ## ✨ Key Features
 * Diverse Solver Suite: GMRES: Robust nonsymmetric solver with Householder and MGS-R variants.BiCGSTAB: Efficient, short-memory nonsymmetric solver. Conjugate Gradient (CG): Optimal performance for Symmetric Positive Definite (SPD) systems.
 * Matrix-Free Architecture: Operates exclusively via user-defined stencil operators, eliminating $\mathcal{O}(N^2)$ storage requirements.
