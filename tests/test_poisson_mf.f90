@@ -38,11 +38,11 @@ CONTAINS
         params(1) = 8.2d0; params(2) = 0.2d0
         x = 1.0d0
         call stvec(x,b,nsize)! b = A*1 all solutions must be 1.0
-        write(*,'(A)') 'GMRES Poisson 2D Test Matrix Free (MGSR Chebyshev)'
+        write(*,'(A)') 'GMRES Poisson 2D Test Matrix Free (Householder Chebyshev)'
         write(*,'(A I8 A18 I5 A8 ES10.2 A10 I2)') "N VARS=", nsize*nsize, " MAX ITERS/STAGE=", max_iter, & 
               & " TOL=", tol, "THREADS=",num_threads
         start_time = omp_get_wtime()
-        call gmres_mgsr_mf(stvec,b,x,max_iter,tol,errn,verr,n_iter,n_stages,cbpr2,params)
+        call gmres_hh_prec_omp(stvec,b,x,max_iter,tol,errn,verr,n_iter,n_stages,cbpr2,params)
         end_time = omp_get_wtime()
         write(*,'(A30, I8, A10, I4)') 'Iterations until convergence:', (n_stages-1)*max_iter+n_iter, ' Stages=', n_stages
         write(*,'(A30, ES12.4)') "Final ||I - V.t * V||:", verr(n_iter)

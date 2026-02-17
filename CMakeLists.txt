@@ -25,6 +25,11 @@ add_library(hilbert_lib src/problems/hilbert.f90)
 add_library(precond_lib src/preconds/chebyshev.f90)
 #Add Utils Library
 add_library(utils_lib src/utils/utils.f90)
+#Add Conjugate Gradient Library
+add_library(cg_lib src/cg.f90)
+#Add BICGSTAB Library
+add_library(bicgstab_lib src/bicgstab.f90)
+
 #Dense Matrix Poisson Test
 add_executable(test_dp tests/test_poisson.f90)
 target_link_libraries(test_dp gmres_lib poisson_lib)
@@ -53,8 +58,21 @@ add_executable(strong_scaling tests/strong_scaling.f90)
 target_link_libraries(strong_scaling gmres_lib poisson_lib precond_lib utils_lib)
 set_target_properties(strong_scaling PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR})
 target_include_directories(strong_scaling PRIVATE ${CMAKE_BINARY_DIR})
+#Conjugate Gradient
+add_executable(cg tests/test_cg.f90)
+target_link_libraries(cg cg_lib poisson_lib precond_lib utils_lib)
+set_target_properties(cg PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR})
+target_include_directories(cg PRIVATE ${CMAKE_BINARY_DIR})
+
+#BICGSTAB
+add_executable(bicgstab tests/test_bicgstab.f90)
+target_link_libraries(bicgstab bicgstab_lib poisson_lib precond_lib utils_lib)
+set_target_properties(bicgstab PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR})
+target_include_directories(bicgstab PRIVATE ${CMAKE_BINARY_DIR})
 
 # Link OpenMP Libraries
 target_link_libraries(test_mfp OpenMP::OpenMP_Fortran)
-#target_link_libraries(test_hilbert OpenMP::OpenMP_Fortran)
+target_link_libraries(strong_scaling OpenMP::OpenMP_Fortran)
+target_link_libraries(cg OpenMP::OpenMP_Fortran)
+target_link_libraries(bicgstab OpenMP::OpenMP_Fortran)
 #target_link_libraries(test_poisson OpenMP::OpenMP_Fortran)

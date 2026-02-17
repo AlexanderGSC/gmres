@@ -21,7 +21,7 @@ PROGRAM strong_scaling
     real(8), allocatable :: params(:) !params for Chebyshev preconditioner max/min eigens
     integer:: i !loop
     tol    = 1.d-15
-    max_iter = 50
+    max_iter = 20
     call omp_set_dynamic(.false.)
     n_args = command_argument_count()
     if (n_args /= 2) then
@@ -41,7 +41,7 @@ PROGRAM strong_scaling
     if (omp_get_thread_num() == 0) num_threads = omp_get_num_threads()
     !$omp end parallel 
     write (desc,'(A15 I2)') "threads=",num_threads
-    print *,'GMRES Weak Scaling Test (MGSR with Chebyshev precond)'
+    print *,'GMRES Weak Scaling Test (Householder with Chebyshev precond)'
     write(header,'(A16 I4 A25 I2)') "Number of Tests:",ntests
     call print_header(header)
     do i=1, ntests
@@ -49,12 +49,17 @@ PROGRAM strong_scaling
         x = 1.0d0
         call stvec(x,b,nsize)! b = A*1 all solutions must be 1.0
         start_time = omp_get_wtime()
-        call gmres_mgsr_omp(stvec,b,x,max_iter,tol,errn,verr,n_iter,n_stages,cbpr2,params)
+        !call gmres_mgsr_omp(stvec,b,x,max_iter,tol,errn,verr,n_iter,n_stages,cbpr2,params)
+        !call gmres_mgsr_mf(stvec,b,x,max_iter,tol,errn,verr,n_iter,n_stages,cbpr2,params)
+        call gmres_hh_prec_omp(stvec,b,x,max_iter,tol,errn,verr,n_iter,n_stages,cbpr2,params)
+        !call gmres_hh_omp(stvec,b,x,max_iter,tol,errn,verr,n_iter,n_stages)
         end_time = omp_get_wtime()
         call print_line(i, nsize*nsize,end_time-start_time, (n_stages-1)*max_iter+n_iter, n_stages, max_iter,tol, errn(n_iter), &
             & verr(n_iter), norm2(x - 1.0d0), maxval(abs(x - 1.0d0)), desc)
         deallocate(x,b)
-        nsize = nsize + 20
+        !nsize = nsize + 20
+        max_iter = max_iter+5
+
     end do
     write(*, '(150("-"))')
 END PROGRAM strong_scaling

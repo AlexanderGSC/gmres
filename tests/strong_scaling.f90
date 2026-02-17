@@ -38,7 +38,7 @@ PROGRAM strong_scaling
     x = 1.0d0
     call stvec(x,b,nsize)! b = A*1 all solutions must be 1.0
 
-    print *,'GMRES Strong Scaling Test (MGSR with Chebyshev precond)'
+    print *,'GMRES Strong Scaling Test (Householder with Chebyshev precond)'
     write(header,'(A25 I4 A25 I2)') "Number of Tests:",ntests
     call print_header(header)
     do i=1, ntests
